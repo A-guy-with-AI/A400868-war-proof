@@ -32,14 +32,14 @@
 \newcommand{\oeis}[1]{\href{https://oeis.org/#1}{#1}}
 \newcommand{\pc}{\operatorname{s}}
 
-\title[Endless games of War when the losing card goes first]{Endless games of War when the losing card goes first:\\ every deck size that is not a power of 2 admits\\ a never-ending deal (verified in Lean~4)}
+\title[A verified proof of Spivey's construction (losing card first)]{Endless games of War when the losing card goes first:\\ a complete, formally verified proof of\\ Spivey's construction (OEIS A400868)}
 \author{A-guy-with-AI}
 \date{November 10, 2026}
 
 \begin{document}
 
 \begin{abstract}
-We study the two-player card game War with cards $1,\dots,n$ and no ties, in the variant where the winner of a turn puts the losing card and then the winning card at the bottom of their pile. OEIS \oeis{A400868} (D.~Okwor, 2026) counts the deals that never end and conjectures that there are none exactly when $n$ is a power of~$2$. We prove one half of this conjecture: for every $n\ge1$ that is not a power of $2$, there is a deal of $\lceil n/2\rceil$ and $\lfloor n/2\rfloor$ cards that never ends, so that $\mathrm{A400868}(n)>0$. The proof uses blocks of $2^k$ cards whose labels are given by binary digit sums; a duel between two adjacent blocks behaves exactly like a duel between two single cards. This result has been formalized and machine-checked in Lean~4 with Mathlib. We also prove a structure theorem for cycles with an odd number of cards: the card that won its previous turn always wins. Finally, we record computational observations on the remaining open direction (no cycles when $n=2^k$), including the failure of two natural strategies.
+We study the two-player card game War with cards $1,\dots,n$ and no ties, in the variant where the winner of a turn puts the losing card and then the winning card at the bottom of their pile. OEIS \oeis{A400868} (D.~Okwor, 2026) counts the deals that never end and conjectures that there are none exactly when $n$ is a power of~$2$. One half of this conjecture was already indicated by M.~Z.~Spivey in 2010, as a remark adapting his construction of cycles: for every $n$ that is not a power of $2$, some game never ends. We give a complete, self-contained written proof of this known direction for this rule, including the existence of a balanced deal of $\lceil n/2\rceil$ and $\lfloor n/2\rfloor$ cards, so that $\mathrm{A400868}(n)>0$. The proof uses blocks of $2^k$ cards whose labels are given by binary digit sums; a duel between two adjacent blocks behaves exactly like a duel between two single cards. Our main contribution is a formalization of this result, machine-checked in Lean~4 with Mathlib. We also prove a structure theorem for cycles with an odd number of cards: the card that won its previous turn always wins. Finally, we record computational observations on the remaining open direction (no cycles when $n=2^k$), including the failure of two natural strategies.
 \end{abstract}
 
 \maketitle
@@ -64,9 +64,9 @@ The entry states the following conjecture, supported by computations for $n\le 1
 \textbf{Conjecture} (\oeis{A400868}). $\mathrm{A400868}(n)=0$ if and only if $n$ is a power of $2$.
 \end{center}
 
-Spivey notes~\cite[p.~762]{Spivey} that a version of his Theorem~3 gives cycles under this rule for every $n$ that is not a power of~$2$. We give a complete, self-contained proof of this direction, including the existence of a \emph{balanced deal} entering the cycle, and a machine-checked formalization.
+The direction ``$n$ not a power of $2$ $\Rightarrow$ endless game'' is not new. Spivey observed~\cite[p.~762]{Spivey} that, when the losing card goes first, corresponding versions of his results hold, and in particular that a version of his Theorem~3 (a doubling construction) gives cycles for every $n$ that is not a power of~$2$. This is also recorded in \oeis{A400868}. Spivey states this as a remark and gives no separate proof for this rule. We do not claim this direction as a new result. Our contributions are: a complete, self-contained written proof for this rule, including the existence of a \emph{balanced deal} entering the cycle (Theorem~\ref{thm:easy}); a machine-checked formalization in Lean~4 (Section~\ref{sec:lean}); a structure theorem for odd $n$ (Theorem~\ref{thm:odd}); and computational observations on the open direction (Section~\ref{sec:hard}).
 
-\begin{theorem}\label{thm:easy}
+\begin{theorem}[Spivey~\cite{Spivey}, announced; complete proof and formal verification here]\label{thm:easy}
 Let $n\ge1$ be an integer that is not a power of $2$. Then there is a deal of the cards $1,\dots,n$, with $\lceil n/2\rceil$ cards for player~$1$ and $\lfloor n/2\rfloor$ for player~$2$, whose game never ends. In particular $\mathrm{A400868}(n)>0$.
 \end{theorem}
 
@@ -192,7 +192,7 @@ It remains to show that no position of $2^k$ cards lies on a cycle. Okwor~\cite{
 
 \section*{Acknowledgements and use of AI}
 
-This work was carried out by the author, who publishes under a pseudonym, in collaboration with AI systems. Claude (Anthropic) chose the problem, found the block construction and the proofs of Theorems~\ref{thm:easy} and~\ref{thm:odd}, and independently recompiled the Lean file. ChatGPT (OpenAI) reviewed the proofs, wrote the complete Lean formalization, and carried out the independent enumerations and the computations reported in Section~\ref{sec:hard} (with the exception of the linear-programming search, done by Claude). The author directed the project, ran the formal verification, and takes responsibility for the final text. The sequence, the conjecture and the data are due to D.~Okwor~\cite{Okwor}.
+This work was carried out by the author, who publishes under a pseudonym, in collaboration with AI systems. Claude (Anthropic) chose the problem, wrote the block construction (a variant of Spivey's doubling) and the proofs of Theorems~\ref{thm:easy} and~\ref{thm:odd}, and independently recompiled the Lean file. ChatGPT (OpenAI) reviewed the proofs, wrote the complete Lean formalization, and carried out the independent enumerations and the computations reported in Section~\ref{sec:hard} (with the exception of the linear-programming search, done by Claude). The author directed the project, ran the formal verification, and takes responsibility for the final text. The sequence, the conjecture and the data are due to D.~Okwor~\cite{Okwor}.
 
 \begin{thebibliography}{9}
 

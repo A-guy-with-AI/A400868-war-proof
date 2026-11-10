@@ -1,6 +1,8 @@
-# Endless games of War (OEIS A400868): every deck size that is not a power of 2 admits a never-ending deal
+# Endless games of War, losing card first (OEIS A400868): a complete, formally verified proof of Spivey's construction
 
-This repository contains a proof, machine-checked in Lean 4, of **one half** of the conjecture recorded in OEIS [A400868](https://oeis.org/A400868).
+This repository contains a complete written proof, machine-checked in Lean 4, of the **known half** of the conjecture recorded in OEIS [A400868](https://oeis.org/A400868).
+
+**Prior work.** This half is not new. M. Z. Spivey, *Cycles in War*, Integers 10 (2010), p. 762, already observed that when the losing card goes first, a version of his doubling construction (his Theorem 3) gives cycles for every n that is not a power of 2. He states this as a remark, without a separate proof for this rule. Our contribution is a self-contained proof for this rule (including a balanced deal), its **formal verification in Lean 4**, a structure theorem for odd n, and computational observations on the open direction.
 
 **The game.** Two players hold the cards 1, …, n. At each turn both reveal their top card. The higher card wins, and the winner puts **the losing card, then the winning card**, at the bottom of their pile. A player with no cards loses.
 
@@ -8,7 +10,7 @@ This repository contains a proof, machine-checked in Lean 4, of **one half** of 
 
 ## Results
 
-> **Theorem 1 (verified in Lean 4).** For every n ≥ 1 that is not a power of 2, there is a deal of ⌈n/2⌉ and ⌊n/2⌋ of the cards 1, …, n whose game never ends. Hence A400868(n) > 0.
+> **Theorem 1 (announced by Spivey, 2010; complete proof here, verified in Lean 4).** For every n ≥ 1 that is not a power of 2, there is a deal of ⌈n/2⌉ and ⌊n/2⌋ of the cards 1, …, n whose game never ends. Hence A400868(n) > 0.
 
 > **Theorem 2 (written proof).** Let n be odd. In every cycle, the card that won its previous turn always beats the card that lost its previous turn. Hence every card keeps its role forever, and the players win alternately.
 
@@ -62,10 +64,10 @@ python3 checks/odd_and_powers.py
 
 This work was produced under the pseudonym A-guy-with-AI, in collaboration with AI systems:
 
-- **Claude (Anthropic):** choice of the problem, the block construction, the proofs of Theorems 1 and 2, an independent recompilation of the Lean file.
+- **Claude (Anthropic):** choice of the problem, the block construction (a variant of Spivey's doubling), the proofs of Theorems 1 and 2, an independent recompilation of the Lean file.
 - **ChatGPT (OpenAI):** review of the proofs, the complete Lean formalization, independent enumerations and large-scale computations.
 
-The sequence, the conjecture and the data are due to **D. Okwor** ([Zenodo](https://doi.org/10.5281/zenodo.22957686), [programs and data](https://github.com/OrygnsCode/endless-games-of-war)). The study of cycles in this simplified game of War goes back to M. Z. Spivey, *Cycles in War*, Integers 10 (2010), who announced the constructive direction for this rule.
+The sequence, the conjecture and the data are due to **D. Okwor** ([Zenodo](https://doi.org/10.5281/zenodo.22957686), [programs and data](https://github.com/OrygnsCode/endless-games-of-war)). The constructive direction for this rule is due to M. Z. Spivey, *Cycles in War*, Integers 10 (2010), p. 762.
 
 ## License
 
