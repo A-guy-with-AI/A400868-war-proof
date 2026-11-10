@@ -1,0 +1,245 @@
+\documentclass[11pt,a4paper]{amsart}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[margin=2.7cm]{geometry}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{listings}
+
+\lstdefinelanguage{lean}{
+  morekeywords={def,abbrev,lemma,theorem,inductive,namespace,end,open,import,by,fun,if,then,else,match,with},
+  sensitive=true, morecomment=[l]{--}, morecomment=[s]{/-}{-/}, morestring=[b]"}
+\lstset{language=lean, basicstyle=\ttfamily\footnotesize, keywordstyle=\bfseries,
+  commentstyle=\itshape\color{black!60}, columns=fullflexible, keepspaces=true,
+  frame=single, framerule=0.3pt, rulecolor=\color{black!30}, xleftmargin=4pt, xrightmargin=4pt,
+  literate={ℕ}{{$\mathbb{N}$}}1 {∃}{{$\exists$}}1 {∀}{{$\forall$}}1 {¬}{{$\neg$}}1
+           {∧}{{$\wedge$}}1 {≠}{{$\ne$}}1 {→}{{$\to$}}1 {α}{{$\alpha$}}1 {⇒}{{$\Rightarrow$}}1}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\oeis}[1]{\href{https://oeis.org/#1}{#1}}
+\newcommand{\pc}{\operatorname{s}}
+
+\title[Endless games of War when the losing card goes first]{Endless games of War when the losing card goes first:\\ every deck size that is not a power of 2 admits\\ a never-ending deal (verified in Lean~4)}
+\author{A-guy-with-AI}
+\date{November 10, 2026}
+
+\begin{document}
+
+\begin{abstract}
+We study the two-player card game War with cards $1,\dots,n$ and no ties, in the variant where the winner of a turn puts the losing card and then the winning card at the bottom of their pile. OEIS \oeis{A400868} (D.~Okwor, 2026) counts the deals that never end and conjectures that there are none exactly when $n$ is a power of~$2$. We prove one half of this conjecture: for every $n\ge1$ that is not a power of $2$, there is a deal of $\lceil n/2\rceil$ and $\lfloor n/2\rfloor$ cards that never ends, so that $\mathrm{A400868}(n)>0$. The proof uses blocks of $2^k$ cards whose labels are given by binary digit sums; a duel between two adjacent blocks behaves exactly like a duel between two single cards. This result has been formalized and machine-checked in Lean~4 with Mathlib. We also prove a structure theorem for cycles with an odd number of cards: the card that won its previous turn always wins. Finally, we record computational observations on the remaining open direction (no cycles when $n=2^k$), including the failure of two natural strategies.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+In the simplified game of War studied by Spivey~\cite{Spivey}, the cards $1,\dots,n$ are dealt to two players. At each turn both players reveal their top card; the higher card wins, and the winner puts both cards at the bottom of their pile. A player with no cards loses. The play is determined by the deal, so a game that never ends eventually repeats a position and enters a cycle. Questions about the existence of cycles go back at least to~\cite{LR,Spivey}; see also~\cite{BCMM,KP,DM}.
+
+Two rules for putting the cards back have been considered. OEIS \oeis{A400411} uses the rule of~\cite{Spivey}: winning card first. In this paper we always use the other rule:
+
+\begin{center}
+\emph{the winner puts the \textbf{losing} card, then the \textbf{winning} card, at the bottom of their pile.}
+\end{center}
+
+OEIS \oeis{A400868}, contributed by D.~Okwor~\cite{Okwor}, counts the deals of $n$ cards (player~1 receives $\lceil n/2\rceil$ cards) whose game never ends:
+\[
+0,\ 0,\ 2,\ 0,\ 64,\ 72,\ 3363,\ 0,\ 273156,\ 322940,\ \dots
+\]
+The entry states the following conjecture, supported by computations for $n\le 16$.
+
+\begin{center}
+\textbf{Conjecture} (\oeis{A400868}). $\mathrm{A400868}(n)=0$ if and only if $n$ is a power of $2$.
+\end{center}
+
+Spivey notes~\cite[p.~762]{Spivey} that a version of his Theorem~3 gives cycles under this rule for every $n$ that is not a power of~$2$. We give a complete, self-contained proof of this direction, including the existence of a \emph{balanced deal} entering the cycle, and a machine-checked formalization.
+
+\begin{theorem}\label{thm:easy}
+Let $n\ge1$ be an integer that is not a power of $2$. Then there is a deal of the cards $1,\dots,n$, with $\lceil n/2\rceil$ cards for player~$1$ and $\lfloor n/2\rfloor$ for player~$2$, whose game never ends. In particular $\mathrm{A400868}(n)>0$.
+\end{theorem}
+
+\begin{theorem}\label{thm:odd}
+Let $n$ be odd and consider a position on a cycle. Call a card \emph{W} if it won the last turn in which it was played, and \emph{L} otherwise. Then at every turn one W card meets one L card, and the W card wins. Consequently every card keeps its role forever, $(n+1)/2$ cards never lose, $(n-1)/2$ cards never win, and the two players win alternately.
+\end{theorem}
+
+Theorem~\ref{thm:odd} is the analogue, for our rule, of Spivey's Theorem~6~\cite{Spivey}; our proof uses a monotone counting argument. The converse direction of the conjecture, that no cycle exists when $n=2^k$, remains open. Section~\ref{sec:hard} records what we observed.
+
+\section{Pairs, phases, and rewinding}\label{sec:basic}
+
+A \emph{position} is a pair $(P_1,P_2)$ of nonempty sequences (read from top to bottom). One turn transforms
+\[
+(x\,U,\ y\,V)\ \longmapsto\
+\begin{cases}
+(U\,y\,x,\ V) & \text{if } x>y,\\
+(U,\ V\,x\,y) & \text{if } x<y.
+\end{cases}
+\]
+
+\begin{lemma}[Pair structure]\label{lem:pairs}
+Let $(P_1,P_2)$ be a position on a cycle. Each pile, read from the bottom, is a sequence of pairs $(\ell,w)$ with $\ell<w$, where $\ell$ and $w$ were captured together, possibly preceded at the top by a single card~$w$ whose partner has already been played. The first card of a pair has role L and the second has role W.
+\end{lemma}
+
+\begin{proof}
+Each turn removes the top card of both piles. Hence, after $\max(|P_1|,|P_2|)$ turns, every card has been played, and every card in a pile has been placed there by a capture of its owner. Captures add the pair (loser, winner) at the bottom. Since the position recurs, we may assume all its cards were placed in this way. Cards leave a pile only from the top, so at most the first card of the oldest pair can be missing, and that card is the loser. The roles follow from the definition.
+\end{proof}
+
+\begin{corollary}[Phase]\label{cor:phase}
+On a cycle, the two top cards have the same role if $n$ is even, and opposite roles if $n$ is odd.
+\end{corollary}
+
+\begin{proof}
+By Lemma~\ref{lem:pairs}, the top card of a pile has role W exactly when the pile has odd length, and $|P_1|+|P_2|=n$.
+\end{proof}
+
+\begin{lemma}[Rewinding]\label{lem:rewind}
+If some position of $n$ cards lies on a cycle, then a deal of $\lceil n/2\rceil$ and $\lfloor n/2\rfloor$ cards enters that cycle (after possibly swapping the players).
+\end{lemma}
+
+\begin{proof}
+Choose a position on the cycle and swap the players if necessary so that $s=|P_1|\ge c=\lceil n/2\rceil$. If $P_1$ ends with a pair $(\ell,w)$, $\ell<w$, then $\bigl(w\,P_1',\ \ell\,P_2\bigr)$, where $P_1=P_1'\,\ell\,w$, is a predecessor: at the next turn $w$ beats $\ell$ and player~$1$ puts back $(\ell,w)$. Repeat this $d=s-c$ times, each time with the next pair from the end of the original $P_1$. This uses $2d$ cards of $P_1$ and keeps at least one other card, because $2d\le s-1$ follows from $s\le n-1$ (as $P_2\ne\emptyset$). The result has sizes $c$ and $n-c$ and reaches the cycle after $d$ turns.
+\end{proof}
+
+\section{Proof of Theorem~\ref{thm:easy}}\label{sec:easy}
+
+\subsection{Labels} It is convenient to play with integer \emph{labels} instead of distinct cards, allowing equal labels, under the condition that two equal labels never meet. Any assignment of distinct cards that is increasing in the labels (ties broken arbitrarily) then produces exactly the same sequence of winners, since every comparison made involves distinct labels.
+
+\subsection{Blocks} Let $\pc(i)$ be the number of $1$'s in the binary expansion of $i$. For $k\ge0$ and $v\in\mathbb Z$, let $B_k(v)$ be the sequence of length $2^k$ whose $i$-th term ($0\le i<2^k$) is $v-k+\pc(i)$. Then $B_0(v)=(v)$ and
+\begin{equation}\label{eq:blocks}
+B_{k+1}(v)=B_k(v-1)\,B_k(v),
+\end{equation}
+because $\pc(2^k+i)=\pc(i)+1$ for $i<2^k$.
+
+\begin{lemma}[Duel of blocks]\label{lem:duel}
+Suppose that player $X$ has $B_k(x)$ on top of its pile and player $Y$ has $B_k(x+1)$ on top of its pile. During the next $2^k$ turns, $Y$ wins every turn without ties, and afterwards both blocks have been removed and $Y$ has put $B_{k+1}(x+1)=B_k(x)\,B_k(x+1)$ at the bottom of its pile.
+\end{lemma}
+
+\begin{proof}
+At turn $i$ the labels are $x-k+\pc(i)$ and $x+1-k+\pc(i)$, so $Y$ wins and puts back $(u,u+1)$ with $u=x-k+\pc(i)$. Since $\pc(2i)=\pc(i)$ and $\pc(2i+1)=\pc(i)+1$, the terms of $B_{k+1}(x+1)$ with indices $2i$ and $2i+1$ are $u$ and $u+1$. Cards added during these turns stay below the remaining parts of the blocks. Hence the $2^k$ captured pairs form $B_{k+1}(x+1)$, which equals $B_k(x)\,B_k(x+1)$ by~\eqref{eq:blocks}.
+\end{proof}
+
+Thus, if a position is a concatenation of blocks of level $k$, aligned in the two piles, and every meeting is between adjacent labels, then the game observed every $2^k$ turns is the game on the block labels: the loser's block, then the winner's block, go to the bottom.
+
+\subsection{The construction} Write $n=m\,2^k$ with $m=2a+1$ odd. Since $n$ is not a power of $2$, $m\ge3$. On single cards with labels $1,2$, the position $\bigl((1,2)^a,\ (2)\bigr)$ returns to itself after two turns: $1$ loses to $2$, giving $\bigl((2)(1,2)^{a-1},\ (1,2)\bigr)$, and then $2$ beats $1$. Both meetings are between $1$ and $2$. By Lemma~\ref{lem:duel}, the position
+\[
+P_1=\bigl(B_k(1)\,B_k(2)\bigr)^a,\qquad P_2=B_k(2)
+\]
+of $n$ labels returns to itself after $2^{k+1}$ turns, and no two equal labels ever meet. Realizing the labels by the cards $1,\dots,n$ gives a game that never ends. Since there are finitely many positions, it enters a cycle, and Lemma~\ref{lem:rewind} provides a balanced deal entering this cycle. This proves Theorem~\ref{thm:easy}.
+
+\begin{remark}
+The period $2^{k+1}$ is a period of the labels, not of the physical cards: a period of labels may permute cards with equal labels. For example, for $n=184$ the physical period of the realization found in our computations is $111\,299\,760$.
+\end{remark}
+
+\section{Proof of Theorem~\ref{thm:odd}}\label{sec:odd}
+
+Let $n$ be odd and fix a cycle. By Corollary~\ref{cor:phase}, each turn compares an L card $\ell$ with a W card $w$. After the turn, the smaller of the two has role L and the larger has role W; all other roles are unchanged.
+
+Fix a threshold $\theta$ and let $\Phi_\theta$ be the number of cards larger than $\theta$ with role~L. The turn replaces the contribution $[\ell>\theta]$ by $[\min(\ell,w)>\theta]\le[\ell>\theta]$. So $\Phi_\theta$ never increases, and it decreases exactly when $\ell>\theta\ge\min(\ell,w)$. On a cycle, $\Phi_\theta$ is periodic, so it never decreases. If an L card ever beat a W card ($\ell>w$), the threshold $\theta=w$ would make $\Phi_\theta$ decrease, a contradiction. Hence W always wins, and roles never change.
+
+By Lemma~\ref{lem:pairs}, the pile with a W card on top has odd length. Its owner wins, and the pile becomes even; the other pile becomes odd. Hence the winners alternate. A pile of length $2j+1$ contains $j+1$ W cards and a pile of length $2i$ contains $i$, which gives $(n+1)/2$ W cards in total. \qed
+
+\section{Formal verification in Lean 4}\label{sec:lean}
+
+Theorem~\ref{thm:easy} has been formalized in Lean~4 with Mathlib~\cite{lean4,mathlib}. The file \texttt{A400868\_easy\_direction.lean} contains 423 lines. It was checked with Lean \texttt{4.36.0-rc2} and Mathlib commit \texttt{9d581dff\allowbreak f2e41de989072ea63abf3daf69311520}. The game is defined directly:
+\begin{lstlisting}
+abbrev State (α : Type*) := List α × List α
+def live (s : State α) : Prop := s.1 ≠ [] ∧ s.2 ≠ []
+def step [LinearOrder α] (s : State α) : State α :=
+  match s with
+  | (x::xs,y::ys) => if x< y then (xs,ys++[x,y]) else (xs++[y,x],ys)
+  | _ => s
+def run [LinearOrder α] : ℕ → State α → State α
+  | 0,s => s
+  | k+1,s => run k (step s)
+def NeverEnds [LinearOrder α] (s : State α) : Prop := ∀ k, live (run k s)
+
+theorem easy_direction (n : ℕ) (hn : 0< n) (hnot : ¬∃k:ℕ,n=2^k) :
+    ∃ s : State ℕ, (s.1++s.2).Perm (List.range' 1 n) ∧
+      s.1.length=(n+1)/2 ∧ s.2.length=n/2 ∧ NeverEnds s
+\end{lstlisting}
+In \texttt{step}, the winner appends the smaller card and then the larger one, as in our rule. The theorem concerns the distinct cards $1,\dots,n$ and a balanced deal, not only labels. The proof follows Section~\ref{sec:easy}: the blocks are defined by the recursion~\eqref{eq:blocks}, the duel lemma is proved by induction, the rewinding is performed directly on a suffix of pairs of the construction, and the realization by distinct cards uses an order isomorphism with $\mathrm{Fin}\ n$.
+
+The file compiles with no errors, no \texttt{sorry} and no \texttt{native\_decide}. The command \texttt{\#print axioms easy\_direction} reports only \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound}. It was compiled independently by both AI systems mentioned in the acknowledgements. The SHA-256 digest of the published file is
+\begin{center}\small\texttt{115b104bf10ee992bbefa75ffcae1e89b70db4b75ed3037243fae3e60a198e2c}.\end{center}
+Theorem~\ref{thm:odd} has not been formalized.
+
+\section{Computations}\label{sec:comp}
+
+The script \texttt{checks/construct\_and\_replay.py} checks, for every $n\le200$ that is not a power of~$2$, the construction of Section~\ref{sec:easy}, the realization by distinct cards, and the balanced deal. For example, for $n=10$ the deal $(8,5,9,1,3\mid4,2,6,7,10)$ never ends. The script \texttt{checks/odd\_and\_powers.py} checks by exhaustive search that no cycle exists for $n=2,4,8$, and that Theorem~\ref{thm:odd} holds for all cycles with $n\le9$.
+
+In addition, independent computations (in C++ and Python) enumerated all cycles for $n\le14$ and replayed the deals of Theorem~\ref{thm:easy} for all $n\le200$, $300\,906\,324$ turns in total, with no failure. These computations are not needed for the proofs.
+
+\section{The open direction}\label{sec:hard}
+
+It remains to show that no position of $2^k$ cards lies on a cycle. Okwor~\cite{Okwor} verified this for $k\le4$ by exhaustive search. We report three observations. They are computational and play no role in the theorems above.
+
+\begin{enumerate}[leftmargin=2em]
+\item \emph{Halving.} For even $n$, Corollary~\ref{cor:phase} groups the turns into rounds of two, in which two pairs of cards meet. A natural strategy is to show that every cycle of $2m$ cards induces a cycle of $m$ ``pairs'', and then to argue by induction. Rounds in which each player wins one turn obstruct this strategy. Such rounds occur in cycles with $n=10,14,18,20,22,28$. In particular, they are not excluded by the condition $4\mid n$.
+\item \emph{Potentials.} We looked, by linear programming, for functions of the form $\sum_{c>\theta}\phi(\text{state of }c)$, where the state of a card is its pile, its distance to the bottom of the pile and the pile size, that never increase along the game. For $n=5$ and $7$ there are functions of this form that decrease at some turns, in the spirit of $\Phi_\theta$ of Section~\ref{sec:odd}. For $n=4,6,8$, every function of this form that never increases is in fact constant along all games. Thus the termination of all games with $4$ or $8$ cards is not explained by such a potential. The same holds, for $n=6$ and $8$, with the analogous states of pairs at the level of rounds.
+\item \emph{Durations.} All games with $n=4$ (respectively $n=8$) end within $7$ (respectively $41$) turns. Among $200\,000$ random games with $16$ cards, all ended, the longest after $284$ turns.
+\end{enumerate}
+
+\section*{Acknowledgements and use of AI}
+
+This work was carried out by the author, who publishes under a pseudonym, in collaboration with AI systems. Claude (Anthropic) chose the problem, found the block construction and the proofs of Theorems~\ref{thm:easy} and~\ref{thm:odd}, and independently recompiled the Lean file. ChatGPT (OpenAI) reviewed the proofs, wrote the complete Lean formalization, and carried out the independent enumerations and the computations reported in Section~\ref{sec:hard} (with the exception of the linear-programming search, done by Claude). The author directed the project, ran the formal verification, and takes responsibility for the final text. The sequence, the conjecture and the data are due to D.~Okwor~\cite{Okwor}.
+
+\begin{thebibliography}{9}
+
+\bibitem{BCMM}
+M.~Bhatia, B.~Chin, N.~Mani and E.~Mossel,
+\emph{When will (game) wars end?}, Amer. Math. Monthly \textbf{133} (2026), 35--46;
+\href{https://arxiv.org/abs/2302.03535}{arXiv:2302.03535}.
+
+\bibitem{DM}
+J.-P.~Delahaye and P.~Mathieu,
+\emph{Jeu de la bataille : à la recherche des parties infinies},
+Pour la Science \textbf{567} (January 2025), 80--85.
+
+\bibitem{KP}
+T.~Khovanova and A.~Pathak,
+\emph{Combinatorial aspects of the card game War},
+Australas. J. Combin. \textbf{91} (2025), 301--325;
+\href{https://arxiv.org/abs/2202.00473}{arXiv:2202.00473}.
+
+\bibitem{LR}
+E.~Lakshtanov and V.~Roshchina,
+\emph{On finiteness in the card game of War},
+Amer. Math. Monthly \textbf{119} (2012), 318--323;
+\href{https://arxiv.org/abs/1007.1371}{arXiv:1007.1371}.
+
+\bibitem{lean4}
+L.~de~Moura and S.~Ullrich,
+\emph{The Lean 4 theorem prover and programming language},
+in: Automated Deduction -- CADE 28, Lecture Notes in Comput. Sci. \textbf{12699}, Springer, 2021, 625--635.
+
+\bibitem{mathlib}
+The mathlib Community,
+\emph{The Lean mathematical library},
+in: Proceedings of the 9th ACM SIGPLAN International Conference on Certified Programs and Proofs (CPP 2020), ACM, 2020, 367--381.
+
+\bibitem{Okwor}
+D.~Okwor,
+\emph{Endless games of War: counting the deals that never end}, Zenodo, 2026,
+\href{https://doi.org/10.5281/zenodo.22957686}{doi:10.5281/zenodo.22957686};
+programs and data at \url{https://github.com/OrygnsCode/endless-games-of-war};
+OEIS entries \oeis{A400411} and \oeis{A400868}.
+
+\bibitem{Spivey}
+M.~Z.~Spivey,
+\emph{Cycles in War},
+Integers \textbf{10} (2010), \#G02, 747--764.
+
+\end{thebibliography}
+
+\end{document}
