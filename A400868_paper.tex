@@ -39,7 +39,7 @@
 \begin{document}
 
 \begin{abstract}
-We study the two-player card game War with cards $1,\dots,n$ and no ties, in the variant where the winner of a turn puts the losing card and then the winning card at the bottom of their pile. OEIS \oeis{A400868} (D.~Okwor, 2026) counts the deals that never end and conjectures that there are none exactly when $n$ is a power of~$2$. One half of this conjecture was already indicated by M.~Z.~Spivey in 2010, as a remark adapting his construction of cycles: for every $n$ that is not a power of $2$, some game never ends. We give a complete, self-contained written proof of this known direction for this rule, including the existence of a balanced deal of $\lceil n/2\rceil$ and $\lfloor n/2\rfloor$ cards, so that $\mathrm{A400868}(n)>0$. The proof uses blocks of $2^k$ cards whose labels are given by binary digit sums; a duel between two adjacent blocks behaves exactly like a duel between two single cards. Our main contribution is a formalization of this result, machine-checked in Lean~4 with Mathlib. We also prove a structure theorem for cycles with an odd number of cards: the card that won its previous turn always wins. Finally, we record computational observations on the remaining open direction (no cycles when $n=2^k$), including the failure of two natural strategies.
+We study the two-player card game War with cards $1,\dots,n$ and no ties, in the variant where the winner of a turn puts the losing card and then the winning card at the bottom of their pile. OEIS \oeis{A400868} (D.~Okwor, 2026) counts the deals that never end and conjectures that there are none exactly when $n$ is a power of~$2$. One half of this conjecture was already indicated by M.~Z.~Spivey in 2010, as a remark adapting his construction of cycles: for every $n$ that is not a power of $2$, some game never ends. We give a complete, self-contained written proof of this known direction for this rule, including the existence of a balanced deal of $\lceil n/2\rceil$ and $\lfloor n/2\rfloor$ cards, so that $\mathrm{A400868}(n)>0$. The proof uses blocks of $2^k$ cards whose labels are given by binary digit sums; a duel between two adjacent blocks behaves exactly like a duel between two single cards. Our main contribution is a formalization of this result, machine-checked in Lean~4 with Mathlib. We also prove, and formalize in Lean, a structure theorem for cycles with an odd number of cards: the card that won its previous turn always wins. Finally, we record computational observations on the remaining open direction (no cycles when $n=2^k$), including the failure of two natural strategies.
 \end{abstract}
 
 \maketitle
@@ -88,11 +88,11 @@ A \emph{position} is a pair $(P_1,P_2)$ of nonempty sequences (read from top to 
 \]
 
 \begin{lemma}[Pair structure]\label{lem:pairs}
-Let $(P_1,P_2)$ be a position on a cycle. Each pile, read from the bottom, is a sequence of pairs $(\ell,w)$ with $\ell<w$, where $\ell$ and $w$ were captured together, possibly preceded at the top by a single card~$w$ whose partner has already been played. The first card of a pair has role L and the second has role W.
+Let $(P_1,P_2)$ be a position on a cycle. From top to bottom, each pile consists of an optional single card of role W, followed by complete capture pairs $(\ell,w)$ with $\ell<w$, each ordered losing card first and winning card second. The card $\ell$ has role L and the card $w$ has role W.
 \end{lemma}
 
 \begin{proof}
-Each turn removes the top card of both piles. Hence, after $\max(|P_1|,|P_2|)$ turns, every card has been played, and every card in a pile has been placed there by a capture of its owner. Captures add the pair (loser, winner) at the bottom. Since the position recurs, we may assume all its cards were placed in this way. Cards leave a pile only from the top, so at most the first card of the oldest pair can be missing, and that card is the loser. The roles follow from the definition.
+Each turn removes the top card of both piles. Let $d>0$ be the period of the cycle and play a multiple of $d$ turns that is at least $\max(|P_1|,|P_2|)$. Then every card initially present has been played, every card in a pile has been placed there by a capture of its owner, and we are back at the same position. Captures add the pair (loser, winner) at the bottom. Since the position recurs, we may assume all its cards were placed in this way. Cards leave a pile only from the top, so at most the first card of the oldest pair can be missing, and that card is the loser. The roles follow from the definition.
 \end{proof}
 
 \begin{corollary}[Phase]\label{cor:phase}
@@ -172,7 +172,7 @@ In \texttt{step}, the winner appends the smaller card and then the larger one, a
 
 The file compiles with no errors, no \texttt{sorry} and no \texttt{native\_decide}. The command \texttt{\#print axioms easy\_direction} reports only \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound}. It was compiled independently by both AI systems mentioned in the acknowledgements. The SHA-256 digest of the published file is
 \begin{center}\small\texttt{115b104bf10ee992bbefa75ffcae1e89b70db4b75ed3037243fae3e60a198e2c}.\end{center}
-Theorem~\ref{thm:odd} has not been formalized.
+Theorem~\ref{thm:odd}, together with Lemma~\ref{lem:pairs} and Corollary~\ref{cor:phase}, is formalized in the separate file \texttt{A400868\_odd\_cycles.lean} (505 lines; theorems \texttt{cycle\_pairs}, \texttt{phase}, \texttt{theorem2}, \texttt{odd\_cycle\_dynamics}, \texttt{role\_counts}), with the same toolchain and only the standard axioms.
 
 \section{Computations}\label{sec:comp}
 
@@ -192,7 +192,7 @@ It remains to show that no position of $2^k$ cards lies on a cycle. Okwor~\cite{
 
 \section*{Acknowledgements and use of AI}
 
-This work was carried out by the author, who publishes under a pseudonym, in collaboration with AI systems. Claude (Anthropic) chose the problem, wrote the block construction (a variant of Spivey's doubling) and the proofs of Theorems~\ref{thm:easy} and~\ref{thm:odd}, and independently recompiled the Lean file. ChatGPT (OpenAI) reviewed the proofs, wrote the complete Lean formalization, and carried out the independent enumerations and the computations reported in Section~\ref{sec:hard} (with the exception of the linear-programming search, done by Claude). The author directed the project, ran the formal verification, and takes responsibility for the final text. The sequence, the conjecture and the data are due to D.~Okwor~\cite{Okwor}.
+This work was carried out by the author, who publishes under a pseudonym, in collaboration with AI systems. Claude (Anthropic) chose the problem, wrote the block construction (a variant of Spivey's doubling) and the proofs of Theorems~\ref{thm:easy} and~\ref{thm:odd}, and independently recompiled the Lean file. ChatGPT (OpenAI) reviewed the proofs, wrote the Lean formalizations of Theorems~\ref{thm:easy} and~\ref{thm:odd}, and carried out the independent enumerations and the computations reported in Section~\ref{sec:hard} (with the exception of the linear-programming search, done by Claude). The author directed the project, ran the formal verification, and takes responsibility for the final text. The sequence, the conjecture and the data are due to D.~Okwor~\cite{Okwor}.
 
 \begin{thebibliography}{9}
 
